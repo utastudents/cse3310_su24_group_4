@@ -38,27 +38,21 @@
 
 package uta.cse3310;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.Vector;
-import java.time.Instant;
-import java.time.Duration;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 public class App extends WebSocketServer {
 
@@ -66,12 +60,12 @@ public class App extends WebSocketServer {
   // the vector ActiveGames
   private Vector<Game> ActiveGames = new Vector<Game>();
 
-  private int GameId = 1;
-
-  private int connectionId = 0;
-
-  private Instant startTime;
-
+  private int gameID;
+  private int connectionId;
+  public ArrayList<Integer> playerIDs;
+  public ArrayList<Player> players = new ArrayList<Player>();
+  private Lobby lobby;
+  public static Map<WebSocket, Player> connectionPlayerMap = new HashMap<>();
   private Statistics stats;
 
   public App(int port) {
@@ -87,143 +81,50 @@ public class App extends WebSocketServer {
   }
 
   @Override
-  public void onOpen(WebSocket conn, ClientHandshake handshake) {
-
-    connectionId++;
-
-    System.out.println(conn.getRemoteSocketAddress().getAddress().getHostAddress() + " connected");
-
-    ServerEvent E = new ServerEvent();
-
-    // search for a game needing a player
-    Game G = null;
-    for (Game i : ActiveGames) {
-      if (i.Players == uta.cse3310.PlayerType.XPLAYER) {
-        G = i;
-        System.out.println("found a match");
-      }
-    }
-
-    // No matches ? Create a new Game.
-    if (G == null) {
-      G = new Game(stats);
-      G.GameId = GameId;
-      GameId++;
-      // Add the first player
-      G.Players = PlayerType.XPLAYER;
-      ActiveGames.add(G);
-      System.out.println(" creating a new Game");
-    } else {
-      // join an existing game
-      System.out.println(" not a new game");
-      G.Players = PlayerType.OPLAYER;
-      G.StartGame();
-    }
-
-    // create an event to go to only the new player
-    E.YouAre = G.Players;
-    E.GameId = G.GameId;
-
-    // allows the websocket to give us the Game when a message arrives..
-    // it stores a pointer to G, and will give that pointer back to us
-    // when we ask for it
-    conn.setAttachment(G);
-
-    Gson gson = new Gson();
-
-    // Note only send to the single connection
-    String jsonString = gson.toJson(E);
-    conn.send(jsonString);
-    System.out
-        .println("> " + Duration.between(startTime, Instant.now()).toMillis() + " " + connectionId + " "
-            + escape(jsonString));
-
-    // Update the running time
-    stats.setRunningTime(Duration.between(startTime, Instant.now()).toSeconds());
-
-    // The state of the game has changed, so lets send it to everyone
-    jsonString = gson.toJson(G);
-    System.out
-        .println("< " + Duration.between(startTime, Instant.now()).toMillis() + " " + "*" + " " + escape(jsonString));
-    broadcast(jsonString);
-
+  // REQUIREMENT: the system should have onOpen()
+  // When a client opens the web site call this method
+  public void onOpen(WebSocket conn, ClientHandshake handshake) { 
+    // Here implements the method when the client opens the server
   }
 
   @Override
+  // REQUIREMENT: The system should have onClose() 
   public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-    System.out.println(conn + " has closed");
-    // Retrieve the game tied to the websocket connection
-    Game G = conn.getAttachment();
-    G = null;
+    // Here implements the method when the client closes the server
   }
 
   @Override
+  // REQUIREMENT: the system should have onMessage() 
   public void onMessage(WebSocket conn, String message) {
-    System.out
-        .println("< " + Duration.between(startTime, Instant.now()).toMillis() + " " + "-" + " " + escape(message));
-
-    // Bring in the data from the webpage
-    // A UserEvent is all that is allowed at this point
-    GsonBuilder builder = new GsonBuilder();
-    Gson gson = builder.create();
-    UserEvent U = gson.fromJson(message, UserEvent.class);
-
-    // Update the running time
-    stats.setRunningTime(Duration.between(startTime, Instant.now()).toSeconds());
-
-    // Get our Game Object
-    Game G = conn.getAttachment();
-    G.Update(U);
-
-    // send out the game state every time
-    // to everyone
-    String jsonString;
-    jsonString = gson.toJson(G);
-
-    System.out
-        .println("> " + Duration.between(startTime, Instant.now()).toMillis() + " " + "*" + " " + escape(jsonString));
-    broadcast(jsonString);
+     // Here implements the method when the client takes actions
   }
 
   @Override
   public void onMessage(WebSocket conn, ByteBuffer message) {
+    // prints out the events that happen on terminal at the same time
     System.out.println(conn + ": " + message);
   }
 
   @Override
+  // REQUIREMENT: the system should have onError()
   public void onError(WebSocket conn, Exception ex) {
     ex.printStackTrace();
     if (conn != null) {
-      // some errors like port binding failed may not be assignable to a specific
-      // websocket
+      // Here deals with errors
     }
   }
 
   @Override
+  // REQUIREMENT: the system should have onStart()
   public void onStart() {
-    setConnectionLostTimeout(0);
-    stats = new Statistics();
-    startTime = Instant.now();
+    // Here implements the method when the server starts
   }
 
-  private String escape(String S) {
-    // turns " into \"
-    String retval = new String();
-    // this routine is very slow.
-    // but it is not called very often
-    for (int i = 0; i < S.length(); i++) {
-      Character ch = S.charAt(i);
-      if (ch == '\"') {
-        retval = retval + '\\';
-      }
-      retval = retval + ch;
-    }
-    return retval;
-  }
 
   public static void main(String[] args) {
 
     String HttpPort = System.getenv("HTTP_PORT");
+    // REQUIREMENT: the port used for the http server shall be optionally provided by an evironment variable
     int port = 9080;
     if (HttpPort!=null) {
       port = Integer.valueOf(HttpPort);
@@ -237,6 +138,7 @@ public class App extends WebSocketServer {
 
     // create and start the websocket server
 
+    // RQUIREMENT: the port used for Websocket server shall be the http port + 100 
     port = 9180;
     String WSPort = System.getenv("WEBSOCKET_PORT");
     if (WSPort!=null) {

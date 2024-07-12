@@ -2,17 +2,31 @@ package uta.cse3310;
 // User events are sent from the webpage to the server
 
 public class UserEvent {
-    int GameId; // the game ID on the server
-    PlayerType PlayerIdx; // either an XPLAYER or an OPLAYER
-    int Button; // button number from 0 to 8
 
-    UserEvent() {
-
+    int GameId; 
+    PlayerType PlayerType; 
+    ActionType Action;
+    
+    UserEvent(int GameId, PlayerType PlayerType, ActionType Action) {
+        this.GameId = GameId;
+        this.PlayerType = PlayerType;
+        this.Action = Action;
+    }
+    public int getGameIdx(){
+        return GameId;
+    }
+    public PlayerType getPlayerType(){
+        return PlayerType;
+    }
+    public ActionType getAction(){
+        return Action;
     }
 
-    UserEvent(int _GameId, PlayerType _PlayerIdx, int _Button) {
-        GameId = _GameId;
-        PlayerIdx = _PlayerIdx;
-        Button = _Button;
+    public void setAction(ActionType Action){
+        this.Action = Action;
+    }
+
+    public void setPlayerType(PlayerType PlayerType){
+        this.PlayerType = PlayerType;
     }
 }
