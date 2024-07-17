@@ -12,7 +12,8 @@ public class Game {
     public boolean gameStarted = false;
    
    
-    // 
+    public Game(){} // Allows empty 
+
     public Game(ArrayList<Player> playerList, int gameID){
         GameId = gameID;
         this.playerList = playerList;

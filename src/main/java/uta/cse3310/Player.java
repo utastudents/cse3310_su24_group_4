@@ -10,10 +10,26 @@ public class Player{
     PlayerType type;
 
     public Player(String playerName){
-        // Here implements the Player constructor
+        // Check if username already exists
+        if(verifyUsername(playerName)){
+            this.playerName = playerName;
+            this.playerID = playerList.size() + 1; 
+            playerList.add(this);
+        } else {
+            this.playerName = null; // Indicates username was not unique
+        }
     }
 
 
+    // Check if there exists the same playername
+    public static boolean verifyUsername(String playerName){
+        for (Player player: playerList) {
+            if(playerName.equals(player.getPlayerName())){
+                return false;
+            }
+        }
+        return true;
+    }
 
     public String getPlayerName() {
         return playerName;
@@ -24,7 +40,8 @@ public class Player{
     } 
 
     public static void removePlayer(int playerID) {
-        // Here implements the method that removes the player
+        // Remove if the playerId matches
+        playerList.removeIf(player -> player.playerID == playerID);
     }
 
     public PlayerType getType() {

@@ -8,11 +8,252 @@
 
 <body>
     <h1>Initial Version</h1>
+    <p id="currentLatency">Current Latency: - ms</p>
+    <p id="averageLatency">Average Latency: - ms</p>
 <label id="topMessage"></label>
 
+<div id = "getUsername">
+    <h1>Enter your username</h1>
+    <input type = "text" id = "username" >
+    <button onclick = "isValidUserName()">Submit</button>
+</div> 
+
+<div id = "Lobby" style = "display:none">
+    <h1>Turn Of Destiny</h1>
+
+     <button id="createRoom" onclick = "addRooms();
+      document.getElementById('createRoom').style.display = 'none';">Create Room</button>
+
+      <div id="AvailableRooms" style = "display:none">
+        <h1>Available Rooms</h1>
+        <ul id="roomsList"></ul>
+     </div>
+
+     <div id="Players" style="display: none;">
+        <h1>Active Players</h1>
+        <ul id="playerList"></ul>
+     </div>
+
+</div>
+
+<div id = "Game" style="display: none;">
+    <h1>Game Room</h1>
+    <button id="backLobby" onclick = "backToLobby();
+      document.getElementById('backLobby').style.display = 'none';">Back</button>
+              <h1>Players in a room</h1>
+              <ul id="playerInGame"></ul>
+</div>
 
 <script>
-   // Here JavaScript Code will be implemented
+        var serverUrl;
+        var latencies = [];
+
+        serverUrl = "ws://" + window.location.hostname +":"+ (parseInt(location.port) + 100);
+        connection = new WebSocket(serverUrl);
+        connection.onmessage = function(evt) {
+
+            var data = JSON.parse(event.data);
+
+            switch (data.type) {
+                case "connectionID":
+                    console.log("ConnectionID:", data);
+                    break;
+                case "UsernameError":
+                    handleUsernameError(data);
+                    break;
+                case "UsernameSuccess":
+                    handleUsernameSuccess(data);
+                    break;
+                case "fetchPlayerList":
+                    printPlayersList(data.players);
+                    break;
+                case "roomList":
+                    updateRoomList(data.rooms);
+                    break;
+                case "fetchRoomPlayerList":
+                    PlayersInGame(data.roomplayers)
+                    break;
+                default:
+                    // Handle other types of messages or errors if necessary
+                    break;
+            }
+
+            // Get the current time
+           
+            // Time that the message was sent from the server
+            var sentTime = data.currentTime;
+            
+            if (!isNaN(sentTime)) {
+                // current time
+                var currentTime = new Date().getTime();
+                // Current time substract sent time is latency
+                var latency = currentTime - sentTime;
+                // Adds it in the array 
+                latencies.push(latency);
+                // If the size of the array is larger than 5
+                if (latencies.length > 5) {
+                    // Removes the first latency time from the array
+                    latencies.shift();
+                }
+                // calculates the average
+                var averageLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+
+                document.getElementById('currentLatency').innerText = 'Current Latency: ' + latency + ' ms';
+                document.getElementById('averageLatency').innerText = 'Average Latency: ' + averageLatency.toFixed(2) + ' ms';
+                //console.log("Sent time: " + sentTime);
+            }
+
+        };
+
+
+
+        // This is called when the user clicked the Submit
+        // Check if it's valid
+        function isValidUserName(){
+            var username = document.getElementById("username").value;
+            if(username == ""){
+                alert('Box cannot be left blank!');
+                return; 
+            }
+            // Key is name
+            connection.send(JSON.stringify({name: username}));
+        }
+        // This deal with the error if the username already exits
+        function handleUsernameError(data) {
+            alert(data.msg);
+            document.getElementById("getUsername").style.display = "block";
+            document.getElementById("Lobby").style.display = "none";
+        }
+        // This deals with the success case hides the textfield
+        // and displays the lobby
+        function handleUsernameSuccess() {
+            document.getElementById("getUsername").style.display = "none";
+            document.getElementById("Lobby").style.display = "block";
+            document.getElementById("AvailableRooms").style.display = "block";
+            // Ask for updating player list since new player entered
+            fetchPlayersList();
+            fetchRooms();
+        }
+        // Here send data to update player
+        function fetchPlayersList() {
+            // Send it to the server to update the player list
+            connection.send(JSON.stringify({action: "fetchPlayersList"}));
+        }
+        // This prints the updated player list
+        function printPlayersList(players) {
+            if(players){
+                document.getElementById("Players").style.display = "block";
+                var playerListElement = document.getElementById("playerList");
+                playerListElement.innerHTML = ""; // Clear existing list
+                players.forEach(function(player) {
+                    var listItem = document.createElement("li");
+                    listItem.textContent = player;
+                    playerListElement.appendChild(listItem);
+                });
+            }
+        }
+
+
+        // Here Functions for Room Operation
+        // When user clicked add a new room
+        function addRooms() {
+            var username = document.getElementById("username").value;
+            connection.send(JSON.stringify({action: "addRoom", playerName: username}));
+            fetchRooms();
+        }
+        // Fetch the room information
+        function fetchRooms() {
+            connection.send(JSON.stringify({action: "fetchRooms"}));
+        }
+        // Update the room list
+        function updateRoomList(data){
+            var roomsList = document.getElementById("roomsList");
+            var username = document.getElementById("username").value;
+            // Edit the html
+            roomsList.innerHTML = "";
+            data.forEach(function(room) {
+                var listItem = document.createElement("li");
+                // Display number of player in the room
+                listItem.textContent = room.name + " (" + room.playerCount + "/4)";
+                // If the room is not full and other user can join
+                if (!room.isFull) {
+                    var joinButton = document.createElement("button");
+                    joinButton.textContent = "Join";
+                    // When the user clicked join
+                    joinButton.onclick = function() {
+                        connection.send(JSON.stringify({action: "joinRoom", playerName: username, roomName: room.name}));
+                        fetchRooms();
+                        startGame(room.name);
+                        fetchRoomPlayersList(room.name);
+                    };
+                    listItem.appendChild(joinButton);
+                }
+
+                // The room creater can remove the room
+                if (room.name === username) {
+                    var removeButton = document.createElement("button");
+                    removeButton.textContent = "Remove";
+                    removeButton.onclick = function() {
+                        document.getElementById('createRoom').style.display = 'block';
+                        connection.send(JSON.stringify({action: "removeRoom", playerName: room.name}));
+                        listItem.remove();
+                    };
+                    listItem.appendChild(removeButton);
+                    document.getElementById("createRoom").style.display = "none";
+                }
+                roomsList.appendChild(listItem);
+            });
+        };
+
+        function fetchRoomPlayersList(roomName){
+            connection.send(JSON.stringify({action: "fetchRoomPlayerList", roomName: roomName}));
+        }
+
+        //Here is the function for games
+        function startGame(roomName){
+
+            document.getElementById("Lobby").style.display = "none";
+            document.getElementById("AvailableRooms").style.display = "none";
+            document.getElementById("Players").style.display = "none";
+            document.getElementById("Game").style.display = "block";
+            document.getElementById("backLobby").style.display = "block";
+            
+            fetchRooms();
+            fetchRoomPlayersList(roomName);
+
+            console.log("Game started in room: " + roomName); 
+        }
+
+        // Function that displays the list of players in the room 
+
+        function PlayersInGame(players) {
+            if(players){
+                document.getElementById("playerInGame").style.display = "block";
+                var playerListElement = document.getElementById("playerInGame");
+                playerListElement.innerHTML = ""; // Clear existing list
+                players.forEach(function(player) {
+                    var listItem = document.createElement("li");
+                    listItem.textContent = player;
+                    playerListElement.appendChild(listItem);
+                    console.log("Player: " + player); 
+                });
+            }
+        }
+
+        // When the user clicks the button back 
+        function backToLobby(){
+            document.getElementById("Lobby").style.display = "block";
+            document.getElementById("AvailableRooms").style.display = "block";
+            document.getElementById("Players").style.display = "block";
+            document.getElementById("Game").style.display = "none";
+
+            connection.send(JSON.stringify({action: "leaveRoom"}));
+            
+            fetchRooms();
+        }
+
+
+
 </script>
 
 </body>
