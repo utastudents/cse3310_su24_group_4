@@ -66,19 +66,15 @@ public class App extends WebSocketServer {
 
   // All games currently underway on this server are stored in
   // the vector ActiveGames
-  private Vector<Game> ActiveGames = new Vector<Game>();
 
-  private int gameID;
+
   private int connectionId;
   public ArrayList<Integer> playerIDs;
   public ArrayList<Player> players = new ArrayList<Player>();
   private Lobby lobby;
   public static Map<WebSocket, Player> connectionPlayerMap = new HashMap<>();
-  private Statistics stats;
   private Instant startTime;
 
-  // Here applies the latency
-  private List<Long> latencies = new ArrayList<>();
 
   public App(int port) {
     super(new InetSocketAddress(port));
@@ -99,7 +95,7 @@ public class App extends WebSocketServer {
   public void onOpen(WebSocket conn, ClientHandshake handshake) { 
     // Here implements the method when the client opens the server
 
-    stats.setRunningTime(Duration.between(startTime, Instant.now()).toSeconds());
+    //stats.setRunningTime(Duration.between(startTime, Instant.now()).toSeconds());
 
     JsonObject openMessage = new JsonObject();
     connectionId++;
@@ -238,18 +234,257 @@ public class App extends WebSocketServer {
 
    // When the user clicked join button
     else if (jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("joinRoom")) {
+        // Get the player name and room name info from Json message
         String playerName = jsonMessage.get("playerName").getAsString();
         String roomName = jsonMessage.get("roomName").getAsString();
+
         System.out.println("Player " + playerName + " is trying to join room " + roomName);
+        // Get the specific room object and player
         Room room = Room.getRoomByName(roomName);
         Player player = connectionPlayerMap.get(conn);
+        // Create the player object if it's null
         if (player == null) {
             player = new Player(playerName);
             connectionPlayerMap.put(conn, player);
         }
         room.addPlayer(player);
+
+        // Here starts a game
+        Game G = room.getGame();
+        // Set the game on this specific connection
+
+        conn.setAttachment(G);
+ 
+        // If the game is already started and another player wants to join
+        // then restart the game
+        if(G.gameStarted){
+          G.restartGame();
+        }
   }
 
+  // Here deals with the game when the game has been started
+  else if (jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("fetchPuzzle")) {
+    // Get the room by the room name
+    Game G = Room.getRoomByName(jsonMessage.get("roomName").getAsString()).getGame();
+    // Set the game attachment to this specific connection
+    conn.setAttachment(G);
+
+    if (G.playerList.size() >= 2 && !G.gameStarted) {
+        // Here implements the operations to start the game
+        G.StartGame();
+        G.gameStarted = true;
+        
+    }
+
+    // If the room has over 2 and less than 4, and has already been started
+    if (G.playerList.size() >= 2 && G.playerList.size() <=4 && G.gameStarted) {
+      // Here implements the game formulation
+
+      GsonBuilder builder = new GsonBuilder();
+      Gson gson = builder.create();
+      String jsonString = gson.toJson(G);
+      JsonObject puzzleMessage = new JsonObject();
+      G.StartGame();
+      // Word will be randomly selected
+      Word word = G.selectWord();
+      // Add the word to a word list
+      G.addWord(word);
+
+      // Get the current player
+      Player currentPlayer = G.currentPlayer(G.count);
+      
+      // Next player
+      G.count++;
+
+      puzzleMessage.addProperty("type", "generatePuzzle");
+
+      puzzleMessage.addProperty("turn", currentPlayer.playerName.toString());
+      
+      //puzzleMessage.add("word", gson.toJsonTree(word.getWord()));
+      puzzleMessage.add("round", gson.toJsonTree(G.round));
+      // Here add data of value of the word
+      puzzleMessage.add("value", gson.toJsonTree(word.getStake()));
+      
+      // For Latency calculation
+      puzzleMessage.addProperty("currentTime", currentTime);
+
+      Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
+      room.setgame(G);
+      room.broadcastToRoom(puzzleMessage.toString());
+      room.updateScoreToRoom();
+      System.out.println("Game has started at " + room);
+
+    }
+  }
+
+  // When player buy a vowel
+  else if(jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("buyVowel")) {
+    Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
+    Game G = Room.getRoomByName(room.getRoomName()).getGame();
+    Word word = G.getWord(G.round-1);
+    System.out.println("Word is now: " + word.wordStr);
+    ActionType action = ActionType.BUYVOWEL;
+
+    room.updatePuzzleToRoom(jsonMessage.get("playerName").getAsString(), action, word);
+    room.updateScoreToRoom();
+
+    // Update current player
+    Player currentPlayer = G.currentPlayer(G.count);
+    // Next player
+    G.count++;
+    JsonObject playerMessage = new JsonObject();
+    playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    // Send it to the room
+    room.broadcastToRoom(playerMessage.toString());
+  }
+
+  // When the player buy consonants
+  else if(jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("buyCons")) {
+    Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
+    Game G = Room.getRoomByName(room.getRoomName()).getGame();
+    Word word = G.getWord(G.round-1);
+    System.out.println("Word is now: " + word.wordStr);
+    ActionType action = ActionType.BUYCONSONANT;
+    
+    room.updatePuzzleToRoom(jsonMessage.get("playerName").getAsString(), action, word);
+    room.updateScoreToRoom();
+
+    // Update current player
+    Player currentPlayer = G.currentPlayer(G.count);
+    // Next player
+    G.count++;
+    JsonObject playerMessage = new JsonObject();
+    playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    // Send it to the room
+    room.broadcastToRoom(playerMessage.toString());
+  }
+
+
+  // Once letters are all revealed by player buying all letters, get another word
+  else if(jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("anotherWord")) {
+    Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
+    Game G = Room.getRoomByName(room.getRoomName()).getGame();
+    Word word = G.selectWord();
+    G.replaceAnother(G.round-1, word);
+    System.out.println("Word is now: " + word.wordStr);
+    
+    GsonBuilder builder = new GsonBuilder();
+    Gson gson = builder.create();
+    String jsonString = gson.toJson(G);
+    JsonObject anotherWordMessage = new JsonObject();
+
+    anotherWordMessage.addProperty("type", "generatePuzzle");
+      
+    anotherWordMessage.add("round", gson.toJsonTree(G.round));
+    anotherWordMessage.add("value", gson.toJsonTree(word.getStake()));
+    room.broadcastToRoom(anotherWordMessage.toString());
+    room.updateScoreToRoom();
+
+    // Update current player
+    Player currentPlayer = G.currentPlayer(G.count);
+    // Next player
+    G.count++;
+    JsonObject playerMessage = new JsonObject();
+    playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    // Send it to the room
+    room.broadcastToRoom(playerMessage.toString());
+  }
+
+  else if(jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("solvePuzzle")) {
+    
+    String answer = jsonMessage.get("answer").getAsString();
+    String player = jsonMessage.get("playerName").getAsString();
+
+    Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
+    Game G = Room.getRoomByName(room.getRoomName()).getGame();
+    Word word = G.getWord(G.round-1);
+    System.out.println("Word is now: " + word.wordStr);
+
+    GsonBuilder builder = new GsonBuilder();
+    Gson gson = builder.create();
+
+    // Update current player
+    Player currentPlayer = G.currentPlayer(G.count);
+    // Next player
+    G.count++;
+    JsonObject playerMessage = new JsonObject();
+    playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    // Send it to the room
+    room.broadcastToRoom(playerMessage.toString());
+
+
+    // If a player got the correct answer
+    if(word.wordStr.equals(answer)){
+      System.out.println("Puzzle was solved");
+
+      JsonObject rightAnswerMsg = new JsonObject();
+      rightAnswerMsg.addProperty("type", "rightAnswer");
+      rightAnswerMsg.add("answer", gson.toJsonTree(answer));
+      rightAnswerMsg.add("player", gson.toJsonTree(player));
+      room.broadcastToRoom(rightAnswerMsg.toString());
+
+      // New round
+      G.round++;
+       // Increments the player scores 
+      G.incrementPoints(player, word);
+
+      // Get the new word
+      Word newWord = G.selectWord();
+      G.addWord(newWord);
+      
+      String jsonString = gson.toJson(G);
+      JsonObject newRoundMessage = new JsonObject();
+     
+      newRoundMessage.addProperty("type", "generatePuzzle");
+        
+      newRoundMessage.add("round", gson.toJsonTree(G.round));
+      newRoundMessage.add("value", gson.toJsonTree(newWord.getStake()));
+
+      // If this was the final round
+      if(G.round >= 4){
+        ArrayList<Player> winner = G.whoIsWinner();
+        // If winner is determined
+        if(winner.size() == 1){
+          JsonObject winnerMsg = new JsonObject();
+          winnerMsg.addProperty("type", "Winner");
+          // Send the name of the winner
+          winnerMsg.add("winner", gson.toJsonTree(winner.get(0).playerName));
+          winnerMsg.add("score", gson.toJsonTree(winner.get(0).playerScore));
+          room.broadcastToRoom(winnerMsg.toString());
+          room.updateScoreToRoom();
+          
+          Room.removeRoom(room.getRoomName());
+          ArrayList<JsonObject> roomsInfo = Room.fetchRoomsInfo();
+          JsonObject roomsMessage = new JsonObject();
+          roomsMessage.addProperty("type", "roomList");
+          roomsMessage.addProperty("currentTime", currentTime);
+          roomsMessage.add("rooms", gson.toJsonTree(roomsInfo));
+          broadcast(roomsMessage.toString());
+          
+        }
+        else{
+          // If winner was not determined 
+          // Go to the additional round
+          room.broadcastToRoom(newRoundMessage.toString());
+          room.updateScoreToRoom();
+        }
+      }
+      else{
+        // Go to the next round
+        room.broadcastToRoom(newRoundMessage.toString());
+        room.updateScoreToRoom();
+      }
+    }else{
+      JsonObject wrongAnswerMsg = new JsonObject();
+      wrongAnswerMsg.addProperty("type", "wrongAnswer");
+      wrongAnswerMsg.add("answer", gson.toJsonTree(answer));
+      room.broadcastToRoom(wrongAnswerMsg.toString());
+    }
+  }
+
+
+
+  // Update the player list in the room
   else if(jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("fetchRoomPlayerList")) {
     String roomName = jsonMessage.get("roomName").getAsString();
     Room room = Room.getRoomByName(roomName);
@@ -261,15 +496,28 @@ public class App extends WebSocketServer {
     playerRoomMsg.addProperty("currentTime", currentTime);
       // Add the list of playernames in the data that'll be sent
     playerRoomMsg.add("roomplayers", gson.toJsonTree(roomPlayerNames));
-      // Globally send it
-    broadcast(playerRoomMsg.toString());
+    // Send the JSON message to the specific room
+    room.broadcastToRoom(playerRoomMsg.toString());
   }
 
+  // remove the player who left and the update the player list in the room
   else if (jsonMessage.has("action") && jsonMessage.get("action").getAsString().equals("leaveRoom")) {
     if (Room.getRoomByPlayer(connectionPlayerMap.get(conn)) != null) {
         Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
         room.removePlayer(connectionPlayerMap.get(conn));
-    }
+        
+        ArrayList<String> roomPlayerNames = room.getPlayersInRoom();
+        Gson gson = new Gson();
+        // Send the updated data of playernames to the front
+        JsonObject playerRoomMsg = new JsonObject();
+        playerRoomMsg.addProperty("type", "fetchRoomPlayerList");
+        playerRoomMsg.addProperty("currentTime", currentTime);
+        // Add the list of playernames in the data that'll be sent
+        playerRoomMsg.add("roomplayers", gson.toJsonTree(roomPlayerNames));
+        // Send this message to only this room
+        room.broadcastToRoom(playerRoomMsg.toString());
+        
+      }
   }
 
 
@@ -315,7 +563,6 @@ public class App extends WebSocketServer {
     // Here implements the method when the server starts
     System.out.println("Server started");
     setConnectionLostTimeout(0);
-    stats = new Statistics();  // Stats starts
     startTime = Instant.now();
   }
 

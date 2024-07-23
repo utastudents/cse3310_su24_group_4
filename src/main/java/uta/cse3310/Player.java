@@ -39,6 +39,15 @@ public class Player{
         // Here implements the method that set up playerName
     } 
 
+    public Player getPlayerByName(String playerName){
+        for (Player player : playerList){
+            if(playerName.equals(player.getPlayerName())){
+                return player;
+            }
+        }
+        return null;
+    }
+
     public static void removePlayer(int playerID) {
         // Remove if the playerId matches
         playerList.removeIf(player -> player.playerID == playerID);

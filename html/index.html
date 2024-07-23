@@ -7,7 +7,7 @@
 </head>
 
 <body>
-    <h1>Initial Version</h1>
+   
     <p id="currentLatency">Current Latency: - ms</p>
     <p id="averageLatency">Average Latency: - ms</p>
 <label id="topMessage"></label>
@@ -36,13 +36,62 @@
 
 </div>
 
+<button id="backLobby" onclick = "backToLobby()" style="display: none;">Back</button>
+
 <div id = "Game" style="display: none;">
-    <h1>Game Room</h1>
-    <button id="backLobby" onclick = "backToLobby();
-      document.getElementById('backLobby').style.display = 'none';">Back</button>
+    <h1 id="RoomName">Room Host: </h1>
               <h1>Players in a room</h1>
               <ul id="playerInGame"></ul>
+              <div id="Round" style="display: none;" class="bottom-centered"> <h1 id="Round">Round : </h1> </div>
+                <br> 
+                <div id="CurrentPlayer" style="display: none;"><h1 id="CurrentPlayer" > Current Player: </h1></div>
+            
+              <div id="Puzzle" style="display: none;" class="puzzle-centered">
+                <p id="Value">Value: </p>
+                <input type="button" value="?" id="b1" ></input>
+                <input type="button" value="?" id="b2" ></input>
+                <input type="button" value="?" id="b3" ></input>
+                <input type="button" value="?" id="b4" ></input>
+                <input type="button" value="?" id="b5" ></input>
+                <input type="button" value="?" id="b6" ></input><br><br>
+
+                <input type="button" value="Solve" id="solve" onclick=solve()></input>
+                <input type="button" value="Buy Vowel $30" id="buyVowel" onclick=buyVowel()></input>
+                <input type="button" value="Buy Consonants $30" id="buyCons" onclick=buyCons()></input>
+                <br>
+                <div id="Submission" style="display: none;">
+                    <input type = "text" id = "solvePuzzle" >
+                    <input type="button" value="Submit" id="submit" onclick=submission()></input>
+                </div>
+                </div>
+                <div id="WinnerBox" style="display: none;" class ="puzzle-centered">
+                    <h1 id="winner">Winner is </h1>
+                    </div>
+                <div id="messageDisplay" style="display: none;" class ="puzzle-centered">
+                    <h1 id="message"></h1>
+                    </div>
+    <div id="ScoreBoard" style="display: none;" class="bottom-centered">
+        <h1>Score Board </h1>
+        <ul id="playerScoreInGame"></ul>
+    </div>
+
 </div>
+
+<style>
+    .puzzle-centered {
+        width: 50%; /* or any desired width */
+        margin: 0 auto;
+        background-color: lightblue;
+        text-align: center; /* optional, to center text inside */
+    }
+    .bottom-centered {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      height: 200ox; /* Full height of the viewport for demonstration */
+      background-color: #f0f0f0; /* Background color for visibility */
+    }
+</style>
 
 <script>
         var serverUrl;
@@ -71,14 +120,32 @@
                     updateRoomList(data.rooms);
                     break;
                 case "fetchRoomPlayerList":
-                    PlayersInGame(data.roomplayers)
+                    PlayersInGame(data.roomplayers);
+                    break;
+                case "generatePuzzle":
+                    generatePuzzle(data);
+                    break;
+                case "fetchPuzzle":
+                    fetchPuzzle(data);
+                    break;
+                case "updateScores":
+                    scoreInGame(data.scores);
+                    break;
+                case "wrongAnswer":
+                    wrongAnswer(data.answer);
+                    break;
+                case "rightAnswer":
+                    rightAnswer(data);
+                    break;
+                case "Winner":
+                    winner(data);
                     break;
                 default:
                     // Handle other types of messages or errors if necessary
                     break;
             }
 
-            // Get the current time
+            
            
             // Time that the message was sent from the server
             var sentTime = data.currentTime;
@@ -101,6 +168,20 @@
                 document.getElementById('currentLatency').innerText = 'Current Latency: ' + latency + ' ms';
                 document.getElementById('averageLatency').innerText = 'Average Latency: ' + averageLatency.toFixed(2) + ' ms';
                 //console.log("Sent time: " + sentTime);
+            }
+
+
+            //console.log("Current Player : " + data.turn);
+            // Check who is the current player
+            if(data.turn !== undefined){
+                var username = document.getElementById("username").value;
+                console.log("Current Player : " + data.turn);
+                if(data.turn === username){
+                    currentPlayer(data.turn);
+                }
+                else{
+                    nonCurrentPlayer(data.turn);
+                }
             }
 
         };
@@ -165,6 +246,7 @@
         function fetchRooms() {
             connection.send(JSON.stringify({action: "fetchRooms"}));
         }
+
         // Update the room list
         function updateRoomList(data){
             var roomsList = document.getElementById("roomsList");
@@ -209,6 +291,9 @@
             connection.send(JSON.stringify({action: "fetchRoomPlayerList", roomName: roomName}));
         }
 
+
+
+
         //Here is the function for games
         function startGame(roomName){
 
@@ -216,12 +301,148 @@
             document.getElementById("AvailableRooms").style.display = "none";
             document.getElementById("Players").style.display = "none";
             document.getElementById("Game").style.display = "block";
-            document.getElementById("backLobby").style.display = "block";
+            
+            
+
+            document.getElementById('RoomName').innerText = 'Room Host: ' + roomName;
             
             fetchRooms();
             fetchRoomPlayersList(roomName);
 
+
+            var thisPlayer = document.getElementById("username").value;
+            connection.send(JSON.stringify({action: "fetchPuzzle", playerName: thisPlayer, roomName: roomName}))
+
             console.log("Game started in room: " + roomName); 
+
+        }
+
+        function generatePuzzle(data){
+            
+            document.getElementById("Puzzle").style.display = "block";
+            document.getElementById("Round").style.display = "block";
+            document.getElementById("Round").innerText = 'Round: ' + data.round;
+
+            document.getElementById("Value").innerText = 'Value: $' + data.value;
+            document.getElementById("b1").value = "?";
+            document.getElementById("b2").value = "?";
+            document.getElementById("b3").value = "?";
+            document.getElementById("b4").value = "?";
+            document.getElementById("b5").value = "?";
+            document.getElementById("b6").value = "?";
+
+        }
+
+        function fetchPuzzle(data){
+
+            const charArray = data.word.split('');
+
+
+            const index = (data.vowelIdx !== undefined) ? data.vowelIdx : data.consIdx;
+
+            console.log("Vowel index: " + data.vowelIdx + " Cons index: " + data.consIdx);
+            console.log("Index: " + index);
+            switch(index){
+                case 0:
+                    document.getElementById("b1").value = charArray[0];
+                    break;
+                case 1:
+                    document.getElementById("b2").value = charArray[1];
+                    break;
+                case 2:
+                    document.getElementById("b3").value = charArray[2];
+                    break;
+                case 3:
+                    document.getElementById("b4").value = charArray[3];
+                    break;
+                case 4:
+                    document.getElementById("b5").value = charArray[4];
+                    break;
+                case 5:
+                    document.getElementById("b6").value = charArray[5];
+                    break;
+                case -1:
+                    document.getElementById("messageDisplay").style.display = "block";
+                    document.getElementById("message").innerText = "No vowel anymore";
+                    break;
+                case -2:
+                    document.getElementById("messageDisplay").style.display = "block";
+                    document.getElementById("message").innerText = "No enough moeny";
+                    break;
+                case -3:
+                    document.getElementById("messageDisplay").style.display = "block";
+                    document.getElementById("message").innerText = "No consonants anymore";
+                default:
+                    // Handle other types of messages or errors if necessary
+                    break;
+            }
+            checkLetters();
+        }
+
+        function checkLetters() {
+            // Get the player name
+            
+            const buttons = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6'];
+            
+            if(buttons.every(id => document.getElementById(id).value !== '?')){
+                connection.send(JSON.stringify({action: "anotherWord"}));
+            }
+        }
+
+        // When a player buy a vowel
+        function buyVowel(){
+            var thisPlayer = document.getElementById("username").value;
+
+            console.log("Player " + thisPlayer + " bought a vowel"); 
+
+            connection.send(JSON.stringify({action: "buyVowel", playerName: thisPlayer}));
+
+        }
+
+        // When a player buy a consonant
+        function buyCons(){
+            var thisPlayer = document.getElementById("username").value;
+
+            console.log("Player " + thisPlayer + " bought a consonants"); 
+
+            connection.send(JSON.stringify({action: "buyCons", playerName: thisPlayer}));
+        }
+
+        // When a player click solve
+        function solve(){
+            //console.log("Player " + thisPlayer + " is trying to solve a puzzle"); 
+            document.getElementById("Submission").style.display = "block";
+        }
+
+        function submission(){
+            var thisPlayer = document.getElementById("username").value;
+            var thisAnswer = document.getElementById("solvePuzzle").value;
+            document.getElementById("Submission").style.display = "none";
+
+            connection.send(JSON.stringify({action: "solvePuzzle", answer: thisAnswer, playerName: thisPlayer}));
+        }
+        
+        // When player got the wrong answer
+        function wrongAnswer(word){
+            document.getElementById("messageDisplay").style.display = "block";
+            document.getElementById("message").innerText = word + " is a wrong answer";
+            console.log(word + " is a wrong answer");
+        }
+
+        // When player got the right answer
+        function rightAnswer(data){
+            document.getElementById("messageDisplay").style.display = "block";
+            document.getElementById("message").innerText =  data.player + " got a right answer : " + data.answer;
+            console.log(data.answer + " is a right answer");
+        }
+
+        function winner(data){
+            document.getElementById("Puzzle").style.display = "none";
+            document.getElementById("messageDisplay").style.display = "none";
+            document.getElementById("WinnerBox").style.display = "block";
+            document.getElementById("winner").innerText = 'Winner is ' + data.winner + " Score : " + data.score;
+            document.getElementById("backLobby").style.display = "block";
+
         }
 
         // Function that displays the list of players in the room 
@@ -240,15 +461,54 @@
             }
         }
 
+        function currentPlayer(currentPlayerName){
+            document.getElementById("CurrentPlayer").style.display = "block";
+            document.getElementById("CurrentPlayer").innerText = "Current Player: " + currentPlayerName;
+            document.getElementById('solve').disabled = false;
+            document.getElementById('buyVowel').disabled = false;
+            document.getElementById('buyCons').disabled = false;
+        }
+
+        function nonCurrentPlayer(currentPlayerName){
+            document.getElementById("CurrentPlayer").style.display = "block";
+            document.getElementById("CurrentPlayer").innerText = "Current Player: " + currentPlayerName;
+            document.getElementById('solve').disabled = true;
+            document.getElementById('buyVowel').disabled = true;
+            document.getElementById('buyCons').disabled = true;
+        }
+
+        function scoreInGame(scores){
+            if(scores){
+                
+                document.getElementById("ScoreBoard").style.display = "block";
+                document.getElementById("playerScoreInGame").style.display = "block";
+
+
+                var playerListElement = document.getElementById("playerScoreInGame");
+                playerListElement.innerHTML = ""; // Clear existing list
+                scores.forEach(function(score) {
+                    var listItem = document.createElement("li");
+                    listItem.textContent = score.playerName + ": $" + score.points;
+                    playerListElement.appendChild(listItem);
+                    console.log("Player: " + score.playerName + " Score: $" + score.points); 
+                });
+            }
+        }
+
         // When the user clicks the button back 
         function backToLobby(){
+
+            connection.send(JSON.stringify({action: "leaveRoom"}));
+
             document.getElementById("Lobby").style.display = "block";
             document.getElementById("AvailableRooms").style.display = "block";
             document.getElementById("Players").style.display = "block";
             document.getElementById("Game").style.display = "none";
-
-            connection.send(JSON.stringify({action: "leaveRoom"}));
-            
+            document.getElementById("WinnerBox").style.display = "none";
+            document.getElementById("Round").style.display = "none";
+            document.getElementById("backLobby").style.display = "none";
+            document.getElementById("ScoreBoard").style.display = "none";
+            document.getElementById("CurrentPlayer").style.display = "none";
             fetchRooms();
         }
 
