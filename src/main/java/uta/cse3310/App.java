@@ -45,7 +45,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.java_websocket.WebSocket;
@@ -53,13 +52,10 @@ import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import java.time.Duration;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
-import java.util.Vector;
 
 
 public class App extends WebSocketServer {
@@ -334,6 +330,7 @@ public class App extends WebSocketServer {
     G.count++;
     JsonObject playerMessage = new JsonObject();
     playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    playerMessage.addProperty("currentTime", currentTime);
     // Send it to the room
     room.broadcastToRoom(playerMessage.toString());
   }
@@ -355,6 +352,7 @@ public class App extends WebSocketServer {
     G.count++;
     JsonObject playerMessage = new JsonObject();
     playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    playerMessage.addProperty("currentTime", currentTime);
     // Send it to the room
     room.broadcastToRoom(playerMessage.toString());
   }
@@ -374,7 +372,7 @@ public class App extends WebSocketServer {
     JsonObject anotherWordMessage = new JsonObject();
 
     anotherWordMessage.addProperty("type", "generatePuzzle");
-      
+    anotherWordMessage.addProperty("currentTime", currentTime);
     anotherWordMessage.add("round", gson.toJsonTree(G.round));
     anotherWordMessage.add("value", gson.toJsonTree(word.getStake()));
     room.broadcastToRoom(anotherWordMessage.toString());
@@ -409,6 +407,7 @@ public class App extends WebSocketServer {
     G.count++;
     JsonObject playerMessage = new JsonObject();
     playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+    playerMessage.addProperty("currentTime", currentTime);
     // Send it to the room
     room.broadcastToRoom(playerMessage.toString());
 
@@ -436,7 +435,7 @@ public class App extends WebSocketServer {
       JsonObject newRoundMessage = new JsonObject();
      
       newRoundMessage.addProperty("type", "generatePuzzle");
-        
+      newRoundMessage.addProperty("currentTime", currentTime);
       newRoundMessage.add("round", gson.toJsonTree(G.round));
       newRoundMessage.add("value", gson.toJsonTree(newWord.getStake()));
 
@@ -477,6 +476,7 @@ public class App extends WebSocketServer {
     }else{
       JsonObject wrongAnswerMsg = new JsonObject();
       wrongAnswerMsg.addProperty("type", "wrongAnswer");
+      wrongAnswerMsg.addProperty("currentTime", currentTime);
       wrongAnswerMsg.add("answer", gson.toJsonTree(answer));
       room.broadcastToRoom(wrongAnswerMsg.toString());
     }
