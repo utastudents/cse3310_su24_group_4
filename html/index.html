@@ -300,6 +300,8 @@
             document.getElementById("Lobby").style.display = "none";
             document.getElementById("AvailableRooms").style.display = "none";
             document.getElementById("Players").style.display = "none";
+            document.getElementById("messageDisplay").style.display = "none";
+
             document.getElementById("Game").style.display = "block";
             
             
@@ -317,8 +319,11 @@
 
         }
 
+        // New puzzle generated
         function generatePuzzle(data){
+
             
+
             document.getElementById("Puzzle").style.display = "block";
             document.getElementById("Round").style.display = "block";
             document.getElementById("Round").innerText = 'Round: ' + data.round;
@@ -394,7 +399,7 @@
             var thisPlayer = document.getElementById("username").value;
 
             console.log("Player " + thisPlayer + " bought a vowel"); 
-
+            document.getElementById("Submission").style.display = "none";
             connection.send(JSON.stringify({action: "buyVowel", playerName: thisPlayer}));
 
         }
@@ -404,7 +409,7 @@
             var thisPlayer = document.getElementById("username").value;
 
             console.log("Player " + thisPlayer + " bought a consonants"); 
-
+            document.getElementById("Submission").style.display = "none";
             connection.send(JSON.stringify({action: "buyCons", playerName: thisPlayer}));
         }
 
@@ -449,6 +454,10 @@
 
         function PlayersInGame(players) {
             if(players){
+                // When new player joined, remove the message 
+                // and restart the game completely
+                document.getElementById("messageDisplay").style.display = "none";
+
                 document.getElementById("playerInGame").style.display = "block";
                 var playerListElement = document.getElementById("playerInGame");
                 playerListElement.innerHTML = ""; // Clear existing list
