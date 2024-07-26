@@ -1,71 +1,46 @@
 package uta.cse3310;
 
-import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
 
 public class WordTest extends TestCase {
 
-    public WordTest(String testName) {
-        super(testName);
+    private Word word;
+
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        // Initialize Word object before each test
+        word = new Word("HELLO", 10);
     }
 
-    public static Test suite() {
-        return new TestSuite(WordTest.class);
-    }
-
-    public void testWordCreation() {
-        String word = "example";
-        int stake = 150;
-        Word wordObj = new Word(word, stake);
-        assertEquals(word, wordObj.getWord());
-        assertEquals(stake, wordObj.getStake());
+    public void testConstructor() {
+        assertNotNull("Word object should be initialized", word);
+        assertEquals("Word should be 'HELLO'", "HELLO", word.getWord());
+        assertEquals("Stake should be 10", 10, word.getStake());
     }
 
     public void testGetLetter() {
-        String word = "example";
-        Word wordObj = new Word(word, 150);
-        assertEquals("e", wordObj.getLetter(0));
-        assertEquals("x", wordObj.getLetter(1));
-        assertEquals("m", wordObj.getLetter(3));
+        assertEquals("Letter at index 0 should be 'H'", "H", word.getLetter(0));
+        assertEquals("Letter at index 1 should be 'E'", "E", word.getLetter(1));
+        assertEquals("Letter at index 4 should be 'O'", "O", word.getLetter(4));
     }
 
     public void testGetVowel() {
-        String word = "example";
-        Word wordObj = new Word(word, 150);
-        
-        // Checking that vowels are correctly identified and their indexes returned
-        int index = wordObj.getVowel();
-        assertTrue(index == 0 || index == 2 || index == 4);
-        
-        index = wordObj.getVowel();
-        assertTrue(index == 0 || index == 2 || index == 4);
-
-        index = wordObj.getVowel();
-        assertTrue(index == 0 || index == 2 || index == 4);
-
-        // No more vowels left to be revealed
-        assertEquals(-1, wordObj.getVowel());
+        assertEquals("First vowel should be at index 1", 1, word.getVowel());
+        assertEquals("Second vowel should be at index 4", 4, word.getVowel());
+        assertEquals("No more vowels should be left", -1, word.getVowel());
     }
 
     public void testGetCons() {
-        String word = "example";
-        Word wordObj = new Word(word, 150);
+        assertEquals("First consonant should be at index 0", 0, word.getCons());
+        assertEquals("Second consonant should be at index 2", 2, word.getCons());
+        assertEquals("Third consonant should be at index 3", 3, word.getCons());
+        assertEquals("No more consonants should be left", -1, word.getCons());
+    }
 
-        // Checking that consonants are correctly identified and their indexes returned
-        int index = wordObj.getCons();
-        assertTrue(index == 1 || index == 3 || index == 5 || index == 6);
-
-        index = wordObj.getCons();
-        assertTrue(index == 1 || index == 3 || index == 5 || index == 6);
-
-        index = wordObj.getCons();
-        assertTrue(index == 1 || index == 3 || index == 5 || index == 6);
-
-        index = wordObj.getCons();
-        assertTrue(index == 1 || index == 3 || index == 5 || index == 6);
-
-        // No more consonants left to be revealed
-        assertEquals(-1, wordObj.getCons());
+    public void testGuesseWord() {
+        // Assuming the guesseWord method is implemented, add appropriate test here
+        // Example: word.guesseWord("HELLO");
+        // assertTrue("Guess should be correct", word.isCorrectGuess()); // hypothetical method
     }
 }
