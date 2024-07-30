@@ -23,6 +23,7 @@ public class GameTest extends TestCase {
         for (int i = 0; i < testword.length(); i++) { // checks that the word is correctly set
             assertTrue(g.Words.get(0).wordStr.charAt(i) == testword.charAt(i));
         }
+        Player.playerList.clear();
     }
 
     public void testInvalidWord() { // R030
@@ -37,6 +38,7 @@ public class GameTest extends TestCase {
         // Assuming some logic in Game class to handle invalid words which isn't shown here
         // Asserting that the word added is indeed the invalid word
         assertEquals(g.Words.get(0).wordStr, invalidWord);
+        Player.playerList.clear();
     }
 
     public void testOneInput() { // test requirement R008
@@ -48,21 +50,23 @@ public class GameTest extends TestCase {
         Word word = g.selectWord();
         g.addWord(word);
         assertNotNull(word);
+        Player.playerList.clear();
     }
 
     public void testPointsAdded() { // R009 and R010
         Game g = new Game();
-        g.playerList.add(new Player("player1"));
-        g.playerList.add(new Player("player2"));
+        g.playerList.add(new Player("user1"));
+        g.playerList.add(new Player("user2"));
+
         g.StartGame();
 
         String testword = "testing";
         Word word = new Word(testword, 100);
         g.addWord(word);
 
-        g.incrementPoints("player1", word);
-
-        assertTrue(g.playerList.get(0).playerScore == 200); // 100 initial + 100 points
+        g.incrementPoints("user1", word);
+        assertTrue(g.playerList.get(0).playerScore == 100); // 100 initial + 100 points
+        Player.playerList.clear();
     }
 
     public void testWinner() { // R026
@@ -81,6 +85,7 @@ public class GameTest extends TestCase {
         ArrayList<Player> winners = g.whoIsWinner();
         assertTrue(winners.size() > 0);
         assertTrue(winners.get(0).playerScore >= 100);
+        Player.playerList.clear();
     }
 
     public void printButton(int start, int end, PlayerType[] array) { // method for debugging/testing

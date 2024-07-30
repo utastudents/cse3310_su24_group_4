@@ -21,6 +21,7 @@ public class PlayerTest extends TestCase{
         Player player = new Player(username);
         
         assertEquals(username, player.getPlayerName());
+        Player.playerList.clear();
     }
 
     public void testNameCheck() { // tests the unique username check
@@ -32,6 +33,7 @@ public class PlayerTest extends TestCase{
         Player player2 = new Player(username2);
         
         assertFalse(player2.getPlayerName() != null);
+        Player.playerList.clear();
     }
 
     public void testRemovePlayer() {
@@ -41,6 +43,7 @@ public class PlayerTest extends TestCase{
         Player.removePlayer(playerID);
 
         assertNull(Player.playerList.stream().filter(p -> p.playerID == playerID).findFirst().orElse(null));
+        Player.playerList.clear();
     }
 
     public void testGetPlayerByName() {
@@ -50,5 +53,6 @@ public class PlayerTest extends TestCase{
         Player retrievedPlayer = player.getPlayerByName(username);
         
         assertEquals(player, retrievedPlayer);
+        Player.playerList.clear();
     }
 }

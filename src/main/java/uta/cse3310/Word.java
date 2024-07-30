@@ -10,9 +10,6 @@ public class Word {
     Set<Integer> vowelRevealed;
     Set<Integer> consRevealed;
 
-    //public static Map<Character, Integer> vowelMap = new HashMap<>();
-    //public static Map<Character, Integer> consMap = new HashMap<>();
-
     public Word(String word, int stake) {
         this.wordStr = word;
         this.stake = stake;
