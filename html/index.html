@@ -140,6 +140,9 @@
                 case "Winner":
                     winner(data);
                     break;
+                case "gameTerminate":
+                    backToLobby();
+                    break;
                 default:
                     // Handle other types of messages or errors if necessary
                     break;
@@ -326,7 +329,13 @@
 
             document.getElementById("Puzzle").style.display = "block";
             document.getElementById("Round").style.display = "block";
-            document.getElementById("Round").innerText = 'Round: ' + data.round;
+            
+            if(data.round >= 3){
+                document.getElementById("Round").innerText = 'Final Round';
+            }
+            else{
+                document.getElementById("Round").innerText = 'Round: ' + data.round;
+            }
 
             document.getElementById("Value").innerText = 'Value: $' + data.value;
             document.getElementById("b1").value = "?";
@@ -372,7 +381,7 @@
                     break;
                 case -2:
                     document.getElementById("messageDisplay").style.display = "block";
-                    document.getElementById("message").innerText = "No enough moeny";
+                    document.getElementById("message").innerText = "No enough money";
                     break;
                 case -3:
                     document.getElementById("messageDisplay").style.display = "block";
@@ -518,6 +527,8 @@
             document.getElementById("backLobby").style.display = "none";
             document.getElementById("ScoreBoard").style.display = "none";
             document.getElementById("CurrentPlayer").style.display = "none";
+            document.getElementById("Puzzle").style.display = "none";
+        
             fetchRooms();
         }
 

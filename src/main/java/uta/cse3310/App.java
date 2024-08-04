@@ -108,6 +108,41 @@ public class App extends WebSocketServer {
     // Identifies the user who closes
     Player player = connectionPlayerMap.get(conn);
     if (player != null) {
+      Gson gson = new Gson();
+
+      if (Room.getRoomByPlayer(connectionPlayerMap.get(conn)) != null) {
+        Room room = Room.getRoomByPlayer(connectionPlayerMap.get(conn));
+        room.removePlayer(connectionPlayerMap.get(conn));
+        Game G = Room.getRoomByName(room.getRoomName()).getGame();
+        ArrayList<String> roomPlayerNames = room.getPlayersInRoom();
+        // Send the updated data of playernames to the front
+        JsonObject playerRoomMsg = new JsonObject();
+        playerRoomMsg.addProperty("type", "fetchRoomPlayerList");
+        // Add the list of playernames in the data that'll be sent
+        playerRoomMsg.add("roomplayers", gson.toJsonTree(roomPlayerNames));
+        // Send this message to only this room
+        room.broadcastToRoom(playerRoomMsg.toString());
+
+
+        // Update current player
+        Player currentPlayer = G.currentPlayer(G.count);
+        // Next player
+        G.count++;
+        JsonObject playerMessage = new JsonObject();
+        playerMessage.addProperty("turn", currentPlayer.playerName.toString());
+        // Send it to the room
+        room.broadcastToRoom(playerMessage.toString());
+
+        room.updateScoreToRoom();
+
+
+        if(roomPlayerNames.size() <= 1){
+          JsonObject gameTerminate = new JsonObject();
+          gameTerminate.addProperty("type", "gameTerminate");
+          room.broadcastToRoom(gameTerminate.toString());
+        }
+      }
+
       // Remove player from the global list, lobby, and the map
       
       // Remove the conn from the record
@@ -124,13 +159,14 @@ public class App extends WebSocketServer {
       ArrayList<String> playerNames = lobby.getPlayerNames();
 
       // Send this to the front and it'll update it
-      Gson gson = new Gson();
+      
       JsonObject updatePlayers = new JsonObject();
       updatePlayers.addProperty("type", "fetchPlayerList");
       // send the data with the updated player list
       updatePlayers.add("players", gson.toJsonTree(playerNames));
       // send this globally
       broadcast(updatePlayers.toString());
+
     }
   }
 
